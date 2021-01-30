@@ -1,0 +1,39 @@
+#!/bin/bash
+
+NameTimes=("t50" "t100" "t200" "t400" "t600" "t800" "t1000" "t2000" "t5000" "t10000" "t50000" )
+NameAlpha=( "a01" "a02" "a03" "a05" "a1" "a2" "a5" "a10")
+NameRand=("r1" "r2" "r3" "r4" "r5")
+
+T=(50 100 200 400 600 800 1000 2000 5000 10000 50000)
+A=(0.1 0.2 0.3 0.5 1.0 2.0 5.0 10.0)
+rand=("f" "t" "t" "t" "t" "t" "t" "t")
+
+#clean and recreate the directory with the data sets
+rm -r random
+mkdir random
+
+#create the data sets
+for i in {0..4}
+do    
+    for j in {5..5}
+    do
+	
+	for k in {0..7}
+	do
+	    
+	    echo " j=$j, k=$k \n"
+	    rm pass.txt
+	    
+	    touch pass.txt
+	    echo -e "10 \n${A[k]} \n0.01 \n${T[j]} \nf \n${rand[k]} \n1.0"  >> pass.txt  
+	    ./a.out < pass.txt
+	    
+	    mv modes_t.dat "./random/modes_${NameRand[i]}_${NameTimes[j]}_${NameAlpha[k]}.dat"
+	    mv power_spectrum.dat "./random/ps_${NameRand[i]}_${NameTimes[j]}_${NameAlpha[k]}.dat"
+	    mv avg_modes.dat "./random/avgmodes_${NameRand[i]}_${NameTimes[j]}_${NameAlpha[k]}.dat"
+	    rm pass.txt
+	    
+	done
+    done
+    mv previous.dat "./random/previous${NameRand[i]}.dat"
+done

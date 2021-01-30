@@ -1,0 +1,604 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{subfiles}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{braket}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage[bottom,norule]{footmisc}
+\usepackage{hyperref}
+\usepackage{chngcntr}
+\usepackage[style=numeric,natbib=true,citestyle=numeric-comp, backend=biber]{biblatex}
+
+\addbibresource{bibliografia.bib}
+
+\usepackage{hyperref}
+\counterwithin{figure}{section}
+\counterwithin{table}{section}
+\numberwithin{equation}{section}
+
+\pagestyle{fancy}
+\lhead{\rightmark}
+\lhead{\thepage}
+
+\fancyfoot{}
+\setlength{\headheight}{15pt}
+\captionsetup{font=footnotesize}
+
+
+\begin{document}
+
+\lfoot{Laboratorio di Fisica Computazionale}
+
+	\title{The Fermi-Pasta-Ulam-Tsingou Problem}
+	\date{19/06/2020}
+	\author{ Giuli Samuele  }
+	\maketitle
+	\begin{center}
+	samuele.giuli@studenti.units.it 
+
+	\textbf{Laurea Magistrale in Fisica della Materia}
+	
+	\textbf{ \small{Università degli Studi di Trieste\\ A.A. 2019/2020}}
+	\end{center}
+	
+	\clearpage
+    
+\section{Introduction}
+
+In this report I will investigate the Fermi,Pasta,Ulam and Tsingou (FPUT) problem that is the effect of an anharmonic term to an homogeneous chain of oscillators on the thermalization of the system. 
+
+The general classical FPUT Hamiltonian with a quartic term is 
+\begin{equation}
+H = \sum_{n=1}^N \frac{p_n^2}{2m} + \frac{k}{2}(u_{n+1}-u_n)^2 + \frac{\alpha}{4}(u_{n+1}-u_n)^4
+\end{equation}
+
+where $p_i$ is the momentum of the i-th oscillator and $u_i$ is the displacement of the i-th oscillator from the equilibrium position. The units I will use are such that $m=1$, $k=1$. Therefore the Hamiltonian will be:
+
+\begin{equation} \label{Ham}
+H = \sum_{n=1}^N \frac{1}{2} \dot{u}_n^2 + \frac{1}{2}(u_{n+1}-u_n)^2 + \frac{\alpha}{4}(u_{n+1}-u_n)^4
+\end{equation}
+and the force acting on the $i-th$ oscillator will be
+\begin{equation}
+F_i = -\frac{\partial U}{\partial u_i}= -(2u_i - u_{i+1} - u_{i-1}) + \alpha \big[ (u_{i+1}-u_i)^3 -( u_i -u_{i-1})^3   \big] = \ddot{u_i}
+\end{equation}
+
+In this simulation I will use fixed boundary conditions such that $u_0 (t) = u_{N+1} (t) = 0$\footnote{That means there are always $N+2$ masses but the first and the last one are fixed.}.
+Under this conditions the completely harmonic Hamiltonian $(\alpha=0)$ can be decomposed in normal modes\footnote{This is a standard coordinate transformation very useful for computing mode contributions, see for example chapter 2 of \cite{FPU} }:
+\begin{equation}
+H = \sum_{n=1}^N \frac{1}{2} P_n^2 + \frac{1}{2} \omega_n^2 Q_n^2 = \sum_{n=1}^N E_n
+\end{equation}
+where 
+\begin{align} 
+u_n =& \sqrt{\frac{2}{N+1}} \sum_{i=1}^N Q_i \sin(\frac{\pi i n}{N+1})  , \ \ \ \dot{u}_n =\sqrt{\frac{2}{N+1}} \sum_{i=1}^N P_i \sin(\frac{\pi i n}{N+1}) \label{UnU} \\
+Q_n =& \sqrt{\frac{2}{N+1}} \sum_{i=1}^N u_i \sin(\frac{\pi i n}{N+1}) , \ \ \ P_n =\sqrt{\frac{2}{N+1}} \sum_{i=1}^N \dot{u}_i \sin(\frac{\pi i n}{N+1}) \label{QnP} \\
+\end{align}
+and the $N$ modes' frequencies are
+\begin{equation}
+\omega_n = 2 \sin \frac{ q_n a}{2} , \ \ q_n = \frac{\pi n}{a(N+1)} \ \ \ \text{dove} \ \ \ n=1,...,N
+\end{equation}
+I will set also the lattice parameter to unity. Note that posing $a=1$ and $k=1$ means that $\alpha$ is measured in units of $\frac{k}{a^2}$.
+
+It is well known that a purely harmonic hamiltonian is non-ergodic in the sense that starting from a normal mode the system will never thermalize and the energy will not be distributed to all the modes as the equipartition theorem would state.
+Since the harmonic normal modes aren't normal modes of the anharmonic hamiltonian (\ref{Ham}) it is legit to think that such a system would thermalize in a finite time. This is what I am going to analize. 
+
+In particular for a thermalized system the equipartition theorem states that every harmonic degree of freedom appearing in the hamiltonian will have the same mean energy $k_B T$. Therefore if there are small anharmonicity that permit the flow of energy from modes but do not perturbe substancially the hamiltonian we expect that the system will be thermalized when the mean energy of every normal mode will be equal.
+
+An additional check for the thermalization is given by the computation of the Power Spectrum components of the displacements. The Power Spectrum of a function $f(t)$ is defined as\footnote{See for example Chapter 9 of \citep{GTC}}:
+
+\begin{equation}
+P= \frac{1}{T} \int_0^T | f(t)|^2 dt = \sum_k |C_k|^2
+\end{equation}
+
+where
+
+\begin{equation}
+c_k = c(\omega_k)=\frac{1}{T} \int_0^T f(t) e^{i \omega_k t}
+\end{equation}
+
+and it is a form of the Parseval's theorem. The $\omega_k$ must be opportunely chosen such that $\omega_k = \omega_0 k$ and $\omega_0 = \frac{2 \pi}{T}$. In principle $k \in \mathbb{N}$ but since infinite numbers are not easy to manage I used $k \in \{ 1,2,...,200 \} $. This will be justified by the fact that, with the simulation time I will choose, $\omega_0 \cdot 200$ will be greater than the maximum frequency of the normal modes of the harmonic hamiltonian. Since at the very beginning of he simulation the sistem won't be thermalized I will compute the power spectrum components of the $u_j$ displacement, $P_k (u_j) = |c_k (u_j)|^2$, for half the simulation time:
+\begin{equation}
+c_k (u_j) = \frac{1}{T/2} \int_{T/2}^T u_j(t) e^{i \omega_k t}
+\end{equation}
+And I will plot the average of the displacements' power spectri components $|C_k|^2 = \frac{1}{N} \sum_{j=1}^N |c_k (u_j) |^2$.
+
+\section{Method}
+I've wrote the code from scratch. I separated the operations in the following subroutines:
+
+\textbf{init():} this subroutine initialize all the parameters of the problem and the initial configuration. I have chosen two types of initial configurations, both depending on the amplitude "A" of the oscillation: the first is startig from the $m-th$ normal mode with zero kinetic energy, that is $v_i(t=0)=0$ and $u_i(t=0) = A \sin(q_m j) $, the other is a random configuration with zero kinetic energy, that is $v_i(t=0)=0$ and $u_i(t=0) = r \cdot A$ where $r$ is a random number in $[-1;1)$. In the former case the amplitude "A" is computed by entering the energy per particle in the harmonic case $\epsilon = E/N$ stored in the varible "EpN". For a given energy per particle from $E=\frac{1}{2} \omega_m^2 Q_m^2$ and (\ref{QnP}) it is easy to derive the value $A=\sqrt{\epsilon \frac{N+1}{N}} \frac{1}{\sin (\pi m / 2(N+1) )}$. In the latter case the code require directly the amplitude "A".
+
+\textbf{move():} in this subroutine the time evolution of the system is computed. The code performs the time evolution of the system using the \textbf{Velocity Verlet algorithm} on the coordinates $u_i$ and $\dot{u}$ stored in the arrays "u" ad "v".
+
+\textbf{force():} this subroutine computes the force at the present configuration and I store in the i-th component of the "f" array the force acting on the i-th oscillator.
+
+\textbf{energy():} this subroutine compute the kinetik ("ekin"), potential ("epot") and total ("etot") energy of the system.
+
+\textbf{modes():} this subroutine compute the power spectrum of the coordinates and the contribution of every harmonic mode to the energy. The latter is stored as the $Q_n$,$P_n$ and $E_n$ values in the n-th component of the arrays "Qk", "Pk" and "Ek". I normalize the "Ek" energy dividing it by $\sum_k E_k$. It also computes the time-averaged energy per particle storing the values in the "Ekfin" array.
+
+To automatize the processes I used the bash script "DataMake" to generate the datafiles needed for the data analysis and I analized, plotted and saved the datas using the Python Notebook "GraphPlot.ipynb". Both of those codes are inside the zipped folder.
+
+
+The \textbf{ergodicity condition} that I speculated is the following.
+
+Defining $\epsilon_k = \frac{dt}{T/2} \sum_{t=T/2}^T  E_k (t) $ and $\sigma_k= \sqrt{ \frac{dt}{T/2}  \sum_{t=T/2}^T \big( \epsilon_k- E_k(t) \big)^2 }$, that are the mean value and the standard deviation of $E_k(t)$ in the interval $(\frac{T}{2};T)$, since the energies must be approximately equal I supposed that the $\chi^2= \frac{1}{N} \sum_k \frac{(\epsilon_k - <\epsilon_k>)^2}{\sigma_k}$ must be $\chi^2 <1$. 
+To verify that this condition is valid I also plot the power spetri of the configurations that verify the condition to check if the peaks relative to the normal modes have the same heights.
+\section{Ausiliary Scripts}
+
+The two ausiliary script I used are the followings.
+
+With the bash script \textbf{"DataMake"} I create the directories and the datasets. With the Python script \textbf{GraphPlot.ipynb}, that must be open with Jupyter, I analized the datasets dividing the code into six cell structures with different tasks:
+\begin{itemize}
+\item The first and the second contain the python libraries and the parameter used.
+\item The third, under the name "ENERGIE MEDIE", plot and save the figure of the datas of time-averaged harmonic modes.
+\item The fourth, under the name "MODI ARMONICI", plot and save the figure of the datas of the instataneous modes' energies $E_k (t)$.
+\item The fifht, under the name "POWER SPECTRUM", plot and save the figure of the datas of the power spectrum.
+\item The sixth, under the name "ERGODICITY CHECK", search for the dataset that satisfy the ergodicity condition that I have speculated and print the parameters for ulterior analysis.
+\end{itemize}
+
+That way the datasets can be reproduced by compiling the "FPUT.f90" code and running the script "DataMake"
+
+The scripts "DataRand" and "GraphPlotRand.ipynb" have the same structure for generating datas for the random simulations.
+
+
+
+\section{Verification of the program}
+
+To valide the code and decide the best parameters I first simulated a system with an harmonic potential setting $\alpha=0$. To choose the correct time step "dt" I performed simulations using $T=100$, $\epsilon = 1$, $N=10$, $m=1,4,7$ and $dt=0.1,0.05,0.01,0.001$. 
+
+
+\begin{figure}[!htb]
+\minipage{0.3\textwidth}
+    \includegraphics[width=\linewidth]{../verification/Verifdtm1.png}
+    \caption{Energia per $m=1$ }
+\endminipage \hfill
+\minipage{0.3\textwidth}
+    \includegraphics[width=\linewidth]{../verification/Verifdtm4.png}
+    \caption{Energia per $m=4$}
+\endminipage \hfill
+\minipage{0.3\textwidth}
+    \includegraphics[width=\linewidth]{../verification/Verifdtm7.png}
+    \caption{Energia per $m=7$}
+\endminipage 
+\end{figure}
+
+From the figures the energy appears to be $\epsilon \cdot N$ as expected. 
+The value $dt=0.1$ always ensures a precision less than $1 \%$ up to $m=7$ and not much bigger than $1\%$ for higher values. 
+From those graphs it is showed a typical characteristic of the harmonic oscillator in normal modes integrated with the Velocity Verlet, the energies show an oscillating behaviour of frequency equal to the initial mode frequency. Since for the Velocity Verlet the global error in position is $\mathcal{O}(dt^2)$ I decided to use $dt=0.01$ and stop at $T=800$. 
+
+
+I verified numerically that after that time there is a substancial difference from the value obtained using a smaller timestep:
+
+\begin{figure} [!htb]
+\centering
+\includegraphics[scale=0.5]{../verification/deviation.png}
+\end{figure}
+
+\clearpage
+
+To check that the modes' components remain constants in the evolution of the harmonic case I plotted the power spectrum and the time averaged values of the energy of each mode per particle \footnote{Each mode has been computed as $ <E_k>_T = \frac{1}{\text{N} \cdot \text{nsteps}} \sum_{t=dt}^T E_k (t) $}. On the left I plotted also the initial configuration of the simulations. The parameters used are $dt=0.05$, $\epsilon=1$, $T=600$, $N=10$, $m=1,2,5,6,8,9$
+
+\begin{figure}[!htb]
+\minipage{0.3\textwidth}
+    \includegraphics[width=\linewidth]{../verification/VerifID.png}
+    \caption{Initial positions}
+\endminipage \hfill
+\minipage{0.1\textwidth}
+\endminipage \hfill
+ \minipage{0.3\textwidth}
+    \includegraphics[width=\linewidth]{../verification/VerifPSfreq.png}
+    \caption{Power spectrum}
+\endminipage \hfill
+\minipage{0.1\textwidth}
+\endminipage \hfill
+ \minipage{0.3\textwidth}
+    \includegraphics[width=\linewidth]{../verification/VerifPS.png}
+    \caption{Final time-averaged components}
+\endminipage 
+\end{figure}
+
+The positions are the one expected for the modes and after $T=100$ the power spectrum figure and the energy of the modes figure show that the modes remains constant in time.
+
+As a check for the program with $\alpha \neq 0$ I controlled the total energy conservation of the system. The parameters I used are $dt=0.05$, $T=100$, $\epsilon = 1$, $N=10$, $\alpha = 0.1, \ 0.5, \ 1.0$. The initial configurations I used are the three normal modes $m=1,4,7$ and three random configurations with $A=1$. 
+
+For the normal modes configurations:
+
+\begin{figure}[!htb]
+\minipage{0.305\textwidth}
+    \includegraphics[width=\linewidth]{../verification/a1m.png}
+    \caption{Normal modes with $\alpha = 1.0$}
+\endminipage \hfill
+\minipage{0.305\textwidth}
+    \includegraphics[width=\linewidth]{../verification/a05m.png}
+    \caption{Normal modes with $\alpha = 0.5$}
+\endminipage \hfill
+\minipage{0.305\textwidth}
+    \includegraphics[width=\linewidth]{../verification/a01m.png}
+    \caption{Normal modes with $\alpha = 0.1$}
+\endminipage 
+\end{figure}
+
+The energy is conserved and it's higher than $\epsilon \cdot N$ because of the anharmonic term. For the random configurations:
+
+\begin{figure}[!htb]
+\minipage{0.305\textwidth}
+    \includegraphics[width=\linewidth]{../verification/a1r.png}
+    \caption{Random configurations with $\alpha = 1.0$}
+\endminipage \hfill
+\minipage{0.305\textwidth}
+    \includegraphics[width=\linewidth]{../verification/a05r.png}
+    \caption{Random configurations with $\alpha = 0.5$}
+\endminipage \hfill
+\minipage{0.305\textwidth}
+    \includegraphics[width=\linewidth]{../verification/a01r.png}
+    \caption{Random configurations with $\alpha = 0.1$}
+\endminipage 
+\end{figure}
+
+\clearpage
+
+\section{Data analysis and Interpretation}
+
+I decided to study the thermalization of a chain excited with long wavelenght modes  $m=1,2$ with the following parameters: $N=10$, $\alpha = 0.1, 0.2, 0.3,0.5,1,2,5,10$, $\epsilon=0.01,0.1,0.5,1$, $dt=0.01$, $T=800$ and therefore $nsteps=80000$. To control the thermalizations I plotted the instantaneous relative components $\frac{E_k(t)}{\sum_k E_k (t)}$ and the time averaged values $<E_k>_t$, remembering that the $E_k$ values are already divided by the number of particles.
+
+\subsection{Normal modes}
+
+The bash script "DataMake" made the data sets and the Python script for Jupyter "GraphPlot.ipynb" made the plots and checked which datasets verified the condition of ergodicity.
+
+I show in the following some plots of the instantaneous modes  $\frac{E_k(t)}{\sum_k E_k (t)}$:
+
+For the mode $\textbf{m=1}$:
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M1a01.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M1a03.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M1a05.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M1a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M1a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M1a10.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M1a01.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M1a03.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M1a05.png}
+\endminipage 
+\end{figure}
+
+\clearpage
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M1a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M1a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M1a10.png}
+\endminipage 
+\end{figure}
+
+Some features are unveiled from these graphs. Many simulations appear to have a quasi-periodic behaviour. The velocity of the thermalization depends strongly on the values of $\epsilon$ and $\alpha$, indeed increasing those parameters the simulations seems to enter a cahotic state that could lead to a thermalized state. 
+
+As it could be expected the share of energy between modes incease with increasing $\alpha$ since this term is responsible for the mixing of the modes. The share increase also with increasing $\epsilon$ since the anharmonic term grows more than the harmonic one increasing the amplitudes of the vibrations. 
+
+On the contrary for lower $\epsilon$ and $\alpha$ it appers that there is a long phases of quasi periodicity and the states are undoubtely not thermalized. For the smallest values the behaviour is almost undistinguishable from the harmonic simulation as one would expect since we should find the harmonic chain for $\alpha \rightarrow 0$.
+
+
+For the mode $\textbf{m=2}$:
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M2a01.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M2a03.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M2a05.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M2a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M2a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps001M2a10.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M2a01.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M2a03.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M2a05.png}
+\endminipage 
+\end{figure}
+
+\clearpage
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M2a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M2a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/modeps1M2a10.png}
+\endminipage 
+\end{figure}
+
+In this case the initial normal harmonic mode appers to be more stable than the previous case. Similarly to the $m=1$ case the systems appear to have a  a phase of quasi periodicity or a fast thermalization depending on the values of $\epsilon$ and $\alpha$.
+
+Testing the ergodicity condition on the datasets I found the following results:
+
+\begin{figure}[!htb]
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/Chieps001.png}
+\endminipage \hfill
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/Chieps01.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/Chieps05.png}
+\endminipage \hfill
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/Chieps1.png}
+\endminipage 
+\end{figure}
+
+
+ the consfigurations that respect the condition are:
+\begin{figure}[!htb]
+
+\minipage{0.33\textwidth}
+\begin{center}
+\begin{tabular}{|c|c|} 
+\hline
+$\alpha$ & $m$ \\ 
+\hline
+5 & 1\\
+\hline 
+10 & 1\\ 
+\hline
+10 & 2\\ 
+\hline
+\end{tabular}
+\end{center}
+\caption{For $\epsilon=0.1$}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+\begin{center}
+\begin{tabular}{|c|c|} 
+\hline
+$\alpha$ & $m$ \\ 
+\hline
+1 & 1  \\ 
+\hline
+2 & 1 \\ 
+\hline
+2 & 2 \\ 
+\hline
+5 & 1 \\ 
+\hline
+5 & 2\\ 
+\hline
+10 & 1\\ 
+\hline
+10 & 2\\ 
+\hline
+\end{tabular}
+\end{center}
+\caption{For $\epsilon=0.5$}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+\begin{center}
+\begin{tabular}{|c|c|} 
+\hline
+$\alpha$ & $m$ \\ 
+\hline
+0.5 &1\\ 
+\hline
+1 & 1\\ 
+\hline
+1 & 2\\ 
+\hline
+2 & 1\\ 
+\hline
+2 & 2\\ 
+\hline
+5 & 1\\ 
+\hline
+5 & 2\\ 
+\hline
+10 & 1 \\ 
+\hline
+10 & 2 \\ 
+\hline
+\end{tabular}
+\end{center}
+\caption{For $\epsilon=1.0$}
+\endminipage \hfill
+\end{figure}
+
+
+To confird the hypotesys of thermalization I decided to plot the power spectri for those parameters and see if there was really a thermalization:
+
+For the mode $\textbf{m=1}$:
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M1a05.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M1a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M1a1.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M1a2.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M1a2.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps01M1a5.png}
+\endminipage 
+\end{figure}
+
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M1a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M1a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps01M1a10.png}
+\endminipage 
+\end{figure}
+
+
+\begin{figure}[!htb]
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M1a10.png}
+\endminipage \hfill
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M1a10.png}
+\endminipage 
+\end{figure}
+
+\clearpage
+
+For the mode $\textbf{m=2}$:
+
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M2a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M2a2.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M2a2.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M2a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M2a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps01M2a10.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps05M2a10.png}
+\endminipage \hfill
+\minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{../img_mod/pseps1M2a10.png}
+\endminipage 
+\end{figure}
+
+From those graphs there are two important features that are unveiled. First, the dominant frequencies are not $\omega_k$ of the harmonic normal modes. Indeed the anharmonic term add a shift to the frequences and the big shifts visible in these plots tell us that we are far away from having a small perturbtion to the harmonic hamiltonian. Moreover, for some parameters there is a big shift, e.g. for $\alpha = 5.0$, and for a complete analysis a bigger frequency interval would be needed.
+
+It is crucial that for many of those configurations the system is clearly not thermalized and there are traces of the original delta spectrum. This means that probably the method I choose for the evaluation of the thermalization is not a good one.
+
+\clearpage
+
+\subsection{Random Configurations}
+
+For the random configurations I generated the data sets with the bash script "DataRand" and Python script for Jupyter "GraphPlorRand.ipynb" made and saved the plots and checked which datasets verified the condition of ergodicity.
+
+There is little interest in the representations of time-averaged and instantaneous modes for a random configuration but it's interesting to see the power spectri for one of them, namely the first random configuration $r=1$:
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_rnd/psr1a01.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_rnd/psr1a02.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_rnd/psr1a05.png}
+\endminipage 
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_rnd/psr1a1.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_rnd/psr1a5.png}
+\endminipage \hfill
+\minipage{0.33\textwidth}
+    \includegraphics[width=\linewidth]{../img_rnd/psr1a10.png}
+\endminipage 
+\end{figure}
+
+It seems that increasing $\alpha$ there is a net drift of the components to the low frequencies but nothing can be said about the ergodicity.
+
+The $\chi^2$ of the ergodicity condition for the random configurations has a decreasing behaviour increasing $\alpha$ as one would expect and seems to have a power law behaviour since the log-log graph seems linear.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[scale=0.5]{../img_rnd/RandomChi}
+\end{figure}
+
+\section{Conclusions}
+
+What it has been clarified is that for small quartic perturbations terms to the hamiltonian, the system do not thermalize in the time that I have simulated. Even increasing the $\alpha$ parameter reaching the visually cahotic behaviour, the system seems to have some memory of the initial configuration as can be seen by the plotted power spectri. From the $\chi^2$ graphs it is clear that this function decrease increasing $\alpha$ or $\epsilon$ and seems to have some kind of power law dependance on $\alpha$, at least for the random configurations, but to verify this it would be necessary to repeat the simulations with additional $\alpha$ values. Some other important possible developments of this work is studying the dependance on the dimension of the simulation, that is the number of oscillators $N$, and the dependance by the time of integration of the parameter $\chi^2$. One would expect that increasing $T$ all the simulations will drift nearer to a thermalized state but this would need a deeper study about the goodness of the Velocity Verlet algorithm for longer simulations and maybe a change of algorithm.
+
+
+
+\printbibliography
+
+\end{document}
