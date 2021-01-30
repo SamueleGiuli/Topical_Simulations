@@ -1,0 +1,15 @@
+In the following there are the codes I used.
+The structure is intuitive from the name of the folders to find the code for a certain task.
+Each folder contains 4 files:
+- A file something.f90 with the code for the VMC or DMC simulation
+- A file something_read.f90 with the code to read the data produced by the code above
+- A file .sh to loop along the values of parameters where values can be passed
+- A Makefile that produce the executable needed for the .sh file
+
+The steps in each folder to try a simulation are the following:
+
+1) once the specific folder is identified use the command "make" to create the executables.
+2) open the .sh file and set the parameters you want to use for the simulation
+3) run the .sh file and obtain in output the datas in the file graph.dat
+
+Each code contains some brief comments to explain what are the steps
