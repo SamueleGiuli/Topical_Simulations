@@ -1,0 +1,3 @@
+The code without "Beta" computes the energy spectrum of the Heisenberg chain with unitary J for unitary spin S=1 and requires in input L,Sz,N_lanc that is the number of lanczos steps to perform.
+The code with "Beta" computes the energy spectrum of the heisenberg chain with unitary J for spin S=1 and with the biquadratic spin-product term proportional to beta as in the literature. In input it requires L,Sz,N_lanc and Beta. 
+To be compiled it requires LAPACK.
