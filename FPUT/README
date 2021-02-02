@@ -1,0 +1,3 @@
+This directory contains the code for the FPUT problem solved with velocity verlet and with
+a quartic term to break the harmonicity of the hamiltonian.
+It also contains the report with some useful comments on the code.
