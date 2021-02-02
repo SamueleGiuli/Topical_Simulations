@@ -1,0 +1,45 @@
+#!/bin/bash
+
+NameTemp=("T0_8" "T0_9" "T1_0" "T1_1" "T1_2" "T1_3")
+Nametsim=("t40000" "t20000" "t30000" "t2000" "t3000" "t4000" "t6000" "t8000" "t10000")
+NameN=("N4" "N32" "N108" "N256" "N500")
+
+#
+
+Temp=(0.8 0.9 1.0 1.1 1.2 1.3)
+tsim=(40000 20000 30000 1000 2000 3000 4000 6000 8000 10000)
+nout=(4000 2000  3000  1000 1000 1000 1000 1000 1000 1000)
+
+L=(3.35 5.025 6.7 8.375)
+N=(32 108 256 500)
+
+
+for j in {0..3}
+do
+    for i in {0..9}
+    do
+	for k in {0..5}
+	do
+	    echo "i= $i, j=$j, k=$k \n"
+	    rm pass.txt
+	    touch pass.txt
+	    echo -e "f \nt \nf \nt \n${Temp[k]} \nt \n0.01 \n${L[j]} \n${N[j]} \nFCC \n1.675 \nt \n300 \n1000 \n0.01 \n3000 \nf \nf \nf \n0.5 \n" >> pass.txt  
+	    ./LJAnd.x < pass.txt
+	    rm pass.txt
+
+	    rm fort.11
+	    ln fort.4 fort.11
+
+	    touch pass.txt
+	    echo -e "\nt \nt \nf \nt \n${Temp[k]} \nt \n0.01 \n${L[j]} \n${N[j]} \nt \n300 \n${nout[i]} \n0.01 \n${tsim[i]} \nf \nf \nf" >> pass.txt
+	    ./LJAnd.x < pass.txt
+	    rm pass.txt
+	    
+	    mv fort.2 "CvScaling/Energie${Temp[k]}${Nametsim[i]}${NameN[j]}.txt"
+	    mv fort.12 "CvScaling/Gr${Temp[k]}${Nametsim[i]}${NameN[j]}.txt"
+	    mv fort.15 "CvScaling/Diff${Temp[k]}${Nametsim[i]}${NameN[j]}.txt"
+
+		
+	done
+   done
+done
