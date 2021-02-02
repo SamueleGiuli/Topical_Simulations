@@ -1,2 +1,5 @@
+Spin0.5 :
+The Jupyter Notebook contains the code for 1D and 2D systems
+Spin1 :
 The code here requires Sz and L to compute the energy spectrum of the Heisenberg chain with unitary J for unitary spin S=1.
 To be compiled it requires LAPACK.
