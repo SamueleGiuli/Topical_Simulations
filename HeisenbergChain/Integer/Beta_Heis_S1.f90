@@ -13,20 +13,19 @@ module sub_mod
       read(*,*) L,Sz,N_lanc,b
 
     end subroutine init
-
       
 !********** S_z at position "i" state "N" **********
   integer function S_i(N,i)
     integer(16), intent(in) :: N
     integer, intent(in) :: i
     integer :: j,jp
-    j=2*i
-    jp=2*i+1
+    j=2*L-1-2*i
+    jp=j-1
     if ( xor( btest(N,j) , btest(N,jp)  ) ) then
        if(btest(N,j)) then
-          S_i = 1
-       else
           S_i = -1
+       else
+          S_i = +1
        endif
     else if( btest(N,j) ) then
        S_i = 1000
@@ -57,28 +56,26 @@ module sub_mod
 
   !********** Set S_i to Val in status_swapped **********
   
-
   subroutine SetS_i(status_swapped,i,Val)
     integer(16), intent(out) :: status_swapped
     integer,intent(in) :: i,Val
     integer :: j,jp
-    j=2*i
-    jp=j+1
+    j=2*L-1-2*i
+    jp=j-1
     if (Val==0)then
        status_swapped=ibclr(status_swapped,j)
        status_swapped=ibclr(status_swapped,jp)
     else if(Val==1)then
-       status_swapped=ibset(status_swapped,j)
-       status_swapped=ibclr(status_swapped,jp)
-    else if(Val==-1)then
        status_swapped=ibclr(status_swapped,j)
        status_swapped=ibset(status_swapped,jp)
+    else if(Val==-1)then
+       status_swapped=ibset(status_swapped,j)
+       status_swapped=ibclr(status_swapped,jp)
     else
        stop 'Error in Setting S_i'
     end if
     
   end subroutine SetS_i   
-
   
   !********** Computing Norms at fixed Sz Qx **********
   subroutine Get_Norms(NormsSzQx,SzSpace,N_Sz,Qx)
@@ -86,10 +83,9 @@ module sub_mod
     integer(16), dimension(1:N_Sz), intent(in) :: SzSpace
     real(8), dimension(1:N_Sz), intent(out) :: NormsSzQx
     real(8), intent(in) :: Qx
-    integer :: i,j,j_period,k
-    integer(16) :: status_i, status_shift
+    integer :: j
+    integer(16) :: status_i, status_shift, i,j_period,k
     complex(8), dimension(:), allocatable :: status
-    complex(8), parameter :: img = dcmplx(0.0d0,1.0d0)
     
     do i = 1,N_Sz
        status_i = SzSpace(i)
@@ -112,7 +108,7 @@ module sub_mod
           status = dcmplx(0.0d0,0.0d0)
           do j=1,L
              k=mod(j,j_period)
-             status(k) = status(k)+exp( Qx*j*img )
+             status(k) = status(k)+exp( Qx*j*dcmplx(0.d0,1.d0) )
           enddo
           NormsSzQx(i) = dsqrt(sum(abs(status)**2)  )
           deallocate(status)
@@ -187,12 +183,13 @@ module sub_mod
     real(8), dimension(1:N_SzQx), intent(in) :: NormsSzQx
     integer(8), dimension(1:N_SzQx,1:l_nodiag), intent(out) :: H_NoDiag_index
     complex(8), dimension(1:N_SzQx,1:l_nodiag), intent(out) :: H_NoDiag
-    integer :: i,ip,j,k,j_x, low, high
-    integer(16) :: status_j, status_swap, status_rep
+    integer(16) :: j,k_rep, low, high
+    integer :: i,ip,j_x,k
+    integer(16) :: status_j, status_swap, status_rep,status_swap_2
     logical :: info, goal_not_found
     
-    H_NoDiag_index=0
-    H_NoDiag = cmplx(0.0d0,0.0d0)
+    H_NoDiag_index = 0
+    H_NoDiag = dcmplx(0.0d0,0.0d0)
     
     do j=1,N_SzQx
        status_j = SpaceSzQx(j)
@@ -201,14 +198,14 @@ module sub_mod
 !********* Trying S+S-
           call SpSm(status_j,status_swap,i,info)
           if(info) cycle
+          status_swap_2 = status_swap
           ip=mod(i+1,L)
-          
           status_rep=status_swap
           j_x=0
           k=0
           do while(k<L)
              k=k+1
-             status_swap= mod(int(4,16)*status_swap,int(4,16)**L-1)
+             status_swap= mod(int(4,16)*status_swap,int(4,16)**L -1)
              if(status_swap.le.status_rep)then
                 if(status_swap==status_rep) exit
                 status_rep = status_swap
@@ -221,32 +218,35 @@ module sub_mod
           goal_not_found = .true.
           
           do while( (low.le.high).and.(goal_not_found) )
-             k = (low + high)/2
-             
-             if ( status_rep == SpaceSzQx(k) ) then
+             k_rep = (low + high)/2
+             if ( status_rep == SpaceSzQx(k_rep) ) then
                 goal_not_found = .false.
                 ! ( S+S- ) + (SzSz S+S-) + (S+S-SzSz)
-                H_NoDiag(j,i+1) = exp(+cmplx(0.0d0,1.0d0)*Qx*j_x)*NormsSzQx(k)/NormsSzQx(j)*&
-                     (1.0 - b*(S_i(status_rep,i)*S_i(status_rep,ip) + S_i(status_j,i)*S_i(status_j,ip) ) )                
-                H_NoDiag_index(j,i+1) = k
-
+                H_NoDiag(j,i+1) = exp(-dcmplx(0.0d0,1.0d0)*Qx*j_x)*NormsSzQx(k_rep)/NormsSzQx(j)*&
+                     dcmplx(1.0 - b*(S_i(status_swap_2,i)*S_i(status_swap_2,ip) + S_i(status_j,i)*S_i(status_j,ip) ) )                
+                H_NoDiag_index(j,i+1) = k_rep
                 
-             else if ( status_rep < SpaceSzQx(k) ) then
-                high = k - 1
+             else if ( status_rep < SpaceSzQx(k_rep) ) then
+                high = k_rep - 1
              else
-                low = k + 1
+                low = k_rep + 1
              end if
-          end do 
+             
+          end do
+         ! if(goal_not_found) print*, 'ERROR IN FINDING THE REPR STATE',j,i,status_rep,status_j
 
 
 !********* Trying (S+S-)**2
-          call SpSm(status_j,status_swap,i,info)
-          call SpSm(status_j,status_swap,i,info)
+
+          !ERRORE DI PRIMA
+          !call SpSm(status_j,status_swap,i,info)
+          !call SpSm(status_j,status_swap,i,info)
+          call SpSm(status_swap_2,status_swap,i,info)
           if(info) cycle
           
           status_rep=status_swap
-          j_x=0
-          k=0
+          j_x = 0
+          k = 0
           do while(k<L)
              k=k+1
              status_swap= mod(int(4,16)*status_swap,int(4,16)**L-1)
@@ -262,21 +262,22 @@ module sub_mod
           goal_not_found = .true.
           
           do while( (low.le.high).and.(goal_not_found) )
-             k = (low + high)/2
+             k_rep = (low + high)/2
              
-             if ( status_rep == SpaceSzQx(k) ) then
+             if ( status_rep == SpaceSzQx(k_rep) ) then
                 goal_not_found = .false.
                 ! ( S+S- )**2
-                H_NoDiag(j,i+1+L) = -b*exp(+cmplx(0.0d0,1.0d0)*Qx*j_x)*NormsSzQx(k)/NormsSzQx(j)
-                H_NoDiag_index(j,i+1+L) = k
+                H_NoDiag(j,i+1+L) = -b*exp(-dcmplx(0.0d0,1.0d0)*Qx*j_x)*NormsSzQx(k_rep)/NormsSzQx(j)
+                H_NoDiag_index(j,i+1+L) = k_rep
                 
-             else if ( status_rep < SpaceSzQx(k) ) then
-                high = k - 1
+             else if ( status_rep < SpaceSzQx(k_rep) ) then
+                high = k_rep - 1
              else
-                low = k + 1
+                low = k_rep + 1
              end if
           end do
-          
+
+          !if(goal_not_found) print*, 'ERROR IN FINDING THE REPR STATE 2',j,i
 
        end do
        
@@ -292,49 +293,43 @@ module sub_mod
     integer(16),intent(in) :: N_SzQx
     complex(8), dimension(1:N_SzQx), intent(out) :: H_Diag
     integer(16), dimension(1:N_SzQx), intent(in)  :: SpaceSzQx
-    integer :: i,j,j_x,k, Si,Sip, j_swapped
-    integer(16) :: status_j, status_swapped, status_rep
-    logical :: info
+    integer(16) :: j, Si,Sip,status_j
+    integer :: i
     
-    H_Diag = cmplx(0.0d0)
+    H_Diag = dcmplx(0.0d0)
     do j=1,N_SzQx
        status_j=SpaceSzQx(j)
 
        Si = S_i(status_j,0)
        do i=1,L-1
           Sip = S_i(status_j,i)
-          
           !Diagonal Term Sz Sz and (S_z S_z)^2
           H_Diag(j) = H_Diag(j) +Sip*Si - b*(Sip*Si)**2
 
-          !Diagonal Term S+S- S-S+
+          !Diagonal Term S-S+S+S-
           if( Si<1 .and. Sip>-1) then
              H_Diag(j) = H_Diag(j) - b
-          else if( Si>-1 .and. Sip<1) then
+             !Diagonal Term S+S-S-S+
+          end if
+          if( Si>-1 .and. Sip<1) then
              H_Diag(j) = H_Diag(j) - b
           end if
              
-
-          
-
-
           Si=Sip
-
-          
        enddo
-       
        !PBC:
        Sip = S_i(status_j,0)
-       H_Diag(j) = H_Diag(j) +Si*Sip-b*(Si*Sip)**2
+       H_Diag(j) = H_Diag(j) +Si*Sip -b*(Si*Sip)**2
        
-       !Diagonal Term S+S- S-S+
+       !Diagonal Term S-S+S+S-
        if( Si<1 .and. Sip>-1) then
           H_Diag(j) = H_Diag(j) - b
-       else if( Si>-1 .and. Sip<1) then
+       end if
+       !Diagonal Term S+S-S-S+
+       if( Si>-1 .and. Sip<1) then
           H_Diag(j) = H_Diag(j) - b
        end if
-       
-
+      
     end do
        
   end subroutine Get_Ham_Diag
@@ -349,22 +344,23 @@ module sub_mod
     complex(8),dimension(1:N_SzQx,1:l_nodiag) :: H_NoDiag
     integer(8),dimension(1:N_SzQx,1:l_nodiag) :: H_NoDiag_index
     complex(8),dimension(1:N_SzQx) :: Psi, PsiPlus, PsiMinus
-    integer :: i,j,k,index,iseed(1:4)
+    integer(16) :: i,j,k,index
+    integer :: iseed(1:4)
     complex(8) :: alpha_i
     
     
     !Gives random values to Psi
     iseed(1) = mod(irand(),4095)
-    iseed(2)=  mod(irand(),4095)
-    iseed(3)= mod(irand(),4095)
-    iseed(4)= mod(irand(),4095)
+    iseed(2) = mod(irand(),4095)
+    iseed(3) = mod(irand(),4095)
+    iseed(4) = mod(irand(),4095)
     if( mod(iseed(4),2)==0) iseed(4)=iseed(4)+1
     call clarnv(2,iseed,2*N_SzQx,Psi)
     Psi=Psi/dsqrt(sum(abs(Psi)**2))
-    PsiMinus=cmplx(0.0d0)
-    PsiPlus=cmplx(0.0d0)
-    alpha=cmplx(0.0d0)
-    beta =cmplx(0.0d0)
+    PsiMinus= dcmplx(0.0d0)
+    PsiPlus = dcmplx(0.0d0)
+    alpha   = dcmplx(0.0d0)
+    beta    = dcmplx(0.0d0)
     !print*,'Psi:',Psi
     !print*,'Hdiag',H_Diag
     
@@ -430,9 +426,9 @@ program HEIS_S1
   use sub_mod
   implicit none
 
-  integer :: i,j,k,lwork, info
-  integer(16) :: status, status_shift, N_L, N_Sz,N_Sz_all, S_status, N_SzQx,i_build
-  integer(16), dimension(:), allocatable :: SpaceSz, SpaceSzQx,States_Builds
+  integer :: i,j,lwork, info
+  integer(16) :: status, status_shift, N_L, N_Sz, N_SzQx,i_build
+  integer(16), dimension(:), allocatable :: SpaceSz, SpaceSzQx
   integer(8), dimension(:,:), allocatable :: H_NoDiag_index
   real(8), dimension(:), allocatable :: momenta, NormsSzQx, NormsSz, eng, work, alpha, beta
   logical, dimension(:), allocatable :: InStates
@@ -449,7 +445,6 @@ program HEIS_S1
      momenta(i) = (i-1)*TwoPi/L
   enddo
 
-
   !Creating Representatives For Sz=0
   t1 = time()
   N_Sz = 0
@@ -462,7 +457,7 @@ program HEIS_S1
            if (status_shift < status) then
               exit
            else if(status_shift == status) then
-              write(13,'(I14)') status
+              write(13,'(I16)') status
               N_Sz = N_Sz+1
               exit
            endif 
@@ -480,12 +475,11 @@ program HEIS_S1
   t1=time()
   open(13,file='Sz.dat',status='old',action='read')
   do i_build=1,N_Sz
-     read(13,'(I14)') SpaceSz(i_build)
+     read(13,'(I16)') SpaceSz(i_build)
   end do
   close(13)
   t2=time()
   print*, 'states read from Sz.dat in',t2-t1,'seconds'
-
 
 
   !Array for Representative 
@@ -508,12 +502,14 @@ program HEIS_S1
      !Writing the representative states
      !with non-zero norm
      j=0
-     do status=1,N_Sz
+     do status=1, N_Sz
+        
         if( InStates(status) ) then
            j=j+1
            SpaceSzQx(j) = SpaceSz(status)
            NormsSzQx(j) = NormsSz(status)
         endif
+        
      enddo
 
 
@@ -528,6 +524,18 @@ program HEIS_S1
      lwork=2*N_lanc-2
      allocate(alpha(1:N_lanc),beta(1:N_lanc),eng(1:N_lanc),work(1:lwork))
      print*,'step 3'
+     print*,'diag:'
+     !do status=1,N_SzQx
+     ! print*, SpaceSzQx(status),H_Diag(status)
+     !enddo
+     !print*,'No_Diag:'
+     ! do status=1,N_SzQx
+     !    do i_build=1,l_nodiag
+     !       if(H_NoDiag_index(status,i_build) .ne. 0)  then
+     !          print*, SpaceSzQx(status),SpaceSzQx(H_NoDiag_index(status,i_build)),H_NoDiag(status,i_build) 
+     !       end if
+     !    end do
+     ! end do
      call Lanczos(alpha,beta,N_SzQx,H_Diag,H_NoDiag,H_NoDiag_index)
      info=0
      print*,'step 4'
